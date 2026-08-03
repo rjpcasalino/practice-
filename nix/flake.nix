@@ -14,6 +14,7 @@
       devShells = forAllSystems (system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
+          lib = pkgs.lib;
 
           customVim = (pkgs.vim-full.override { guiSupport = false; }).customize {
             name = "vim";
@@ -43,7 +44,6 @@
             };
           };
 
-          # Create a custom executable command to display the practice examples
           practiceExamples = pkgs.writeShellScriptBin "nix-examples" ''
             cat << 'EOF'
             =========================================
@@ -73,18 +73,31 @@
             =========================================
             EOF
           '';
+
         in
         {
           default = pkgs.mkShell {
+            # Standard tools go here. 
+            # On Linux, we append Ghostty to the list. On Darwin, we append an empty list.
             buildInputs = with pkgs; [
               nil
               nixpkgs-fmt
               statix
               customVim
-              practiceExamples # Injects the 'nix-examples' command
-            ];
-
+              practiceExamples
+            ] ++ lib.optionals pkgs.stdenv.isLinux [ pkgs.ghostty ];
+            
             shellHook = ''
+              ${lib.optionalString pkgs.stdenv.isLinux ''
+                # --- LINUX ONLY: GHOSTTY HIJACK ---
+                # Ghostty sets TERM to xterm-ghostty. If we aren't in Ghostty, launch it.
+                if [[ "$TERM" != *"ghostty"* ]]; then
+                  echo "🚀 Relaunching Nix environment inside Ghostty..."
+                  # Cleanly launch a fresh nix develop session inside Ghostty
+                  exec ghostty -e nix develop
+                fi
+              ''}
+
               echo "================================================================"
               echo " ❄️  Nix Expression Practice Environment Ready ❄️"
               echo "================================================================"
