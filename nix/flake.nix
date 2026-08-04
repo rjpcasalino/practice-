@@ -14,7 +14,6 @@
       devShells = forAllSystems (system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          lib = pkgs.lib;
 
           customVim = (pkgs.vim-full.override { guiSupport = false; }).customize {
             name = "vim";
@@ -74,39 +73,75 @@
             EOF
           '';
 
+          # Safely access the Nix HTML manual without overriding system Nix executables
+          nixManualScript = pkgs.writeShellScriptBin "nix-manual" ''
+            DOC_PATH="${pkgs.nix.doc}/share/doc/nix/manual/index.html"
+            echo "Opening local Nix Manual in your browser..."
+            
+            if command -v open >/dev/null 2>&1; then
+              open "$DOC_PATH"
+            elif command -v xdg-open >/dev/null 2>&1; then
+              xdg-open "$DOC_PATH"
+            else
+              echo "Could not detect a web browser opener. You can view the manual here:"
+              echo "file://$DOC_PATH"
+            fi
+          '';
+
+          ghosttyManualScript = pkgs.writeShellScriptBin "ghostty-manual" ''
+            echo "Opening Ghostty man page..."
+            man ghostty
+          '';
+
         in
         {
           default = pkgs.mkShell {
-            # Standard tools go here. 
-            # On Linux, we append Ghostty to the list. On Darwin, we append an empty list.
+            # Adding 'man' ensures the environment's MANPATH is generated correctly
             buildInputs = with pkgs; [
               nil
               nixpkgs-fmt
               statix
               customVim
+              man
               practiceExamples
-            ] ++ lib.optionals pkgs.stdenv.isLinux [ pkgs.ghostty ];
-            
+              nixManualScript
+              ghosttyManualScript
+            ] ++ (if pkgs.stdenv.isLinux then [ pkgs.ghostty ] 
+                  else if pkgs.stdenv.isDarwin then [ pkgs.ghostty-bin ] 
+                  else []);
+
             shellHook = ''
-              ${lib.optionalString pkgs.stdenv.isLinux ''
-                # --- LINUX ONLY: GHOSTTY HIJACK ---
-                # Ghostty sets TERM to xterm-ghostty. If we aren't in Ghostty, launch it.
-                if [[ "$TERM" != *"ghostty"* ]]; then
-                  echo "🚀 Relaunching Nix environment inside Ghostty..."
-                  # Cleanly launch a fresh nix develop session inside Ghostty
+              # --- GHOSTTY AUTO-INSTALLER & HIJACK ---
+              if [[ "$TERM" != *"ghostty"* ]]; then
+                if ! command -v ghostty >/dev/null 2>&1; then
+                  echo "⚠️ Ghostty not detected. Attempting automated installation..."
+                  if [[ "$OSTYPE" == "darwin"* ]]; then
+                    if command -v brew >/dev/null 2>&1; then
+                      echo "📦 Installing Ghostty via Homebrew cask..."
+                      brew install --cask ghostty
+                    else
+                      echo "❌ Homebrew not found. Please install Ghostty manually from https://ghostty.org"
+                    fi
+                  else
+                    echo "ℹ️ Nix is provisioning Ghostty for your Linux environment..."
+                  fi
+                fi
+
+                if command -v ghostty >/dev/null 2>&1; then
+                  echo "🚀 Relaunching Nix development environment inside Ghostty..."
                   exec ghostty -e nix develop
                 fi
-              ''}
+              fi
 
               echo "================================================================"
               echo " ❄️  Nix Expression Practice Environment Ready ❄️"
               echo "================================================================"
               echo ""
-              echo " To view the builtins practice examples, run:"
-              echo "    nix-examples"
-              echo ""
-              echo " To practice evaluating expressions interactively, run:"
-              echo "    nix repl -f '<nixpkgs>'"
+              echo " Quick commands available:"
+              echo "    nix-examples    - View builtins cheat sheet"
+              echo "    nix-manual      - Open local offline Nix HTML manual"
+              echo "    ghostty-manual  - Open local Ghostty man page"
+              echo "    nix repl        - Open interactive evaluation REPL"
               echo "================================================================"
               echo ""
             '';
