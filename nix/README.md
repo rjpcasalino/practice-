@@ -10,10 +10,3 @@ When you launch this shell, you get a zero-setup, IDE-like Vim environment power
 * **statix:** A static analysis linter that catches Nix anti-patterns and bad habits as you type.
 * **nixpkgs-fmt:** The standard formatter to keep your code clean (auto-runs on save in Vim).
 * **Vim:** Configured with `vim-nix`, `vim-mucomplete` for as-you-type autocomplete, and a clean status bar.
-
-## Getting Started
-
-1. **Clone the repository:**
-   ```bash
-   git clone [https://github.com/rjpcasalino/practice-.git](https://github.com/rjpcasalino/practice-.git)
-   cd practice-
