@@ -88,9 +88,29 @@
             fi
           '';
 
-          ghosttyManualScript = pkgs.writeShellScriptBin "ghostty-manual" ''
+          ghosttyManualScript = pkgs.writeShellScriptBin "man-ghost" ''
             echo "Opening Ghostty man page..."
             man ghostty
+          '';
+
+          # A command to launch the game with a clean UI
+          playTutor = pkgs.writeShellScriptBin "nix-tutor" ''
+            clear
+            cat << "EOF"
+            ========================================================
+             🎮 NIX REPL TUTOR 🎮
+            ========================================================
+            To play, evaluate the question for your current level.
+            Example: Type `level1.question`
+
+            To submit an answer, pass your code into the check function.
+            Example: `level1.check (your_nix_code_here)`
+            ========================================================
+
+            EOF
+
+            # Launch the REPL and automatically load the tutor file
+            nix repl --expr 'import ./tutor.nix'
           '';
 
         in
@@ -106,9 +126,10 @@
               practiceExamples
               nixManualScript
               ghosttyManualScript
-            ] ++ (if pkgs.stdenv.isLinux then [ pkgs.ghostty ] 
-                  else if pkgs.stdenv.isDarwin then [ pkgs.ghostty-bin ] 
-                  else []);
+              playTutor
+            ] ++ (if pkgs.stdenv.isLinux then [ pkgs.ghostty ]
+            else if pkgs.stdenv.isDarwin then [ pkgs.ghostty-bin ]
+            else [ ]);
 
             shellHook = ''
               # --- GHOSTTY AUTO-INSTALLER & HIJACK ---
@@ -140,7 +161,8 @@
               echo " Quick commands available:"
               echo "    nix-examples    - View builtins cheat sheet"
               echo "    nix-manual      - Open local offline Nix HTML manual"
-              echo "    ghostty-manual  - Open local Ghostty man page"
+              echo "    man-ghost       - Open local Ghostty man page"
+              echo "    nix-tutor       - Open tutor.nix"
               echo "    nix repl        - Open interactive evaluation REPL"
               echo "================================================================"
               echo ""
