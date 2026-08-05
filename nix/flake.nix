@@ -93,25 +93,16 @@
             man ghostty
           '';
 
-          # A command to launch the game with a clean UI
+          # A lightweight launcher that loads the curriculum into the REPL
           playTutor = pkgs.writeShellScriptBin "nix-tutor" ''
             clear
-            cat << "EOF"
-            ========================================================
-             🎮 NIX REPL TUTOR 🎮
-            ========================================================
-            To play, evaluate the question for your current level.
-            Example: Type `level1.question`
+            # Calculate the local path to the Nix manual
+            DOC_BASE="file://${pkgs.nix.doc}/share/doc/nix/manual"
 
-            To submit an answer, pass your code into the check function.
-            Example: `level1.check (your_nix_code_here)`
-            ========================================================
-
-            EOF
-
-            # Launch the REPL and automatically load the tutor file
-            nix repl --expr 'import ./tutor.nix'
+            # Launch REPL and dynamically pass the DOC_BASE argument into the file
+            nix repl --expr "import ./tutor.nix { docBase = \"$DOC_BASE\"; }"
           '';
+          
 
         in
         {
